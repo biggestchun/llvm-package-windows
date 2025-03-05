@@ -17,15 +17,29 @@ jobs:
       run: |
         choco install -y cmake ninja llvm z3   
 
+    - name: Cache LLVM source
+      uses: actions/cache@v4
+      id: cache-llvm
+      with:
+        path: llvm-project/.git
+        key: llvm-18-${{ hashFiles('.gitmodules') }}-${{ hashFormat('SHA256', 'https://github.com/llvm/llvm-project.git release/18.x') }}
+    
     - name: Download LLVM 18 source
       run: |
-        git clone --recurse-submodules --branch release/18.x https://github.com/llvm/llvm-project.git 
-        if ($LASTEXITCODE -ne 0) {
-          git clone --recurse-submodules --branch llvmorg-18.0.0 https://github.com/llvm/llvm-project.git
-        }
-        if ($LASTEXITCODE -ne 0) {
-          git clone --recurse-submodules https://github.com/llvm/llvm-project.git
-        }
+        if [[ -d "llvm-project/.git" ]]; then
+          echo "Using cached repository"
+          cd llvm-project
+          git fetch origin release/18.x
+          git reset --hard FETCH_HEAD
+          git submodule sync
+          git submodule update --init --recursive
+          cd ..
+        else
+          git clone --recurse-submodules --branch release/18.x https://github.com/llvm/llvm-project.git 
+          if [ $? -ne 0 ]; then
+            git clone --recurse-submodules --branch llvmorg-18.0.0 https://github.com/llvm/llvm-project.git
+          fi
+        fi
 
     - name: Configure LLVM
       run: |
