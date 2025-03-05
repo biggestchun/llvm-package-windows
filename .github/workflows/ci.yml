@@ -1,7 +1,7 @@
 name: Build LLVM 18
 
 on:
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
@@ -10,29 +10,32 @@ on:
 jobs:
   build-llvm:
     runs-on: windows-latest
-    timeout-minutes: 360  # Allow for a longer build time (6 hours)
-    
+    timeout-minutes: 360
+
     steps:
     - name: Install dependencies
       run: |
-        choco install -y cmake ninja llvm
-        
+        choco install -y cmake ninja llvm z3  # Added z3 installation
+
     - name: Download LLVM 18 source
       run: |
         git clone --recurse-submodules --branch release/18.x https://github.com/llvm/llvm-project.git 
         if ($LASTEXITCODE -ne 0) {
-          git clone ---recurse-submodules --branch llvmorg-18.0.0 https://github.com/llvm/llvm-project.git
+          git clone --recurse-submodules --branch llvmorg-18.0.0 https://github.com/llvm/llvm-project.git
         }
         if ($LASTEXITCODE -ne 0) {
           git clone --recurse-submodules https://github.com/llvm/llvm-project.git
         }
-        
+
     - name: Configure LLVM
       run: |
         mkdir llvm-build
         cd llvm-build
+        # Added Z3_DIR and Z3 variables
         cmake -G Ninja ..\llvm-project\llvm `
           -DLLVM_ENABLE_Z3_SOLVER=ON `
+          -DZ3_INCLUDE_DIR="C:/Program Files/Z3/include" `
+          -DZ3_LIBRARY="C:/Program Files/Z3/bin/libz3.dll" `
           -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;compiler-rt;lld" `
           -DLLVM_FORCE_BUILD_RUNTIME=ON `
           -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi" `
@@ -41,7 +44,6 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release `
           -DCMAKE_C_COMPILER=clang `
           -DCMAKE_CXX_COMPILER=clang++ `
-          -DLLVM_ENABLE_PROJECTS="clang" `
           -DLLVM_TARGETS_TO_BUILD="X86" `
           -DLLVM_OPTIMIZED_TABLEGEN=ON `
           -DLLVM_USE_LINKER=lld `
@@ -53,13 +55,13 @@ jobs:
     - name: Build LLVM
       run: |
         cd llvm-build
-        ninja -j2  # Limit parallelism to avoid memory issues
-        
+        ninja
+
     - name: Install LLVM
       run: |
         cd llvm-build
         ninja install
-        
+
     - name: Upload LLVM build
       uses: actions/upload-artifact@v4
       with:
