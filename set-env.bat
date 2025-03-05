@@ -15,6 +15,7 @@ if /i "%1" == "i386" goto :x86
 if /i "%1" == "amd64" goto :amd64
 if /i "%1" == "x86_64" goto :amd64
 if /i "%1" == "x64" goto :amd64
+if /i "%1" == "clang" goto :clang
 if /i "%1" == "msvc10" goto :msvc10
 if /i "%1" == "msvc12" goto :msvc12
 if /i "%1" == "msvc14" goto :msvc14
@@ -52,6 +53,14 @@ goto :loop
 :: . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 :: Toolchain
+
+:clang
+set TOOLCHAIN=clang
+set CMAKE_GENERATOR=Ninja
+set CMAKE_USE_ARCH_OPTIONS=false
+set CMAKE_COMPILER_OPTIONS=-DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl
+shift
+goto :loop
 
 :msvc10
 set TOOLCHAIN=msvc10
@@ -145,17 +154,23 @@ set LLVM_RELEASE_TAG=llvm-%LLVM_VERSION%
 set LLVM_CMAKELISTS_URL=https://raw.githubusercontent.com/llvm/llvm-project/main/llvm/CMakeLists.txt
 
 if /i "%BUILD_MASTER%" == "true" (
-	powershell "Invoke-WebRequest -Uri %LLVM_CMAKELISTS_URL% -OutFile CMakeLists.txt"
-	for /f %%i in ('perl print-llvm-version.pl CMakeLists.txt') do set LLVM_VERSION=%%i
-	set LLVM_RELEASE_TAG=llvm-master
+        powershell "Invoke-WebRequest -Uri %LLVM_CMAKELISTS_URL% -OutFile CMakeLists.txt"
+        for /f %%i in ('perl print-llvm-version.pl CMakeLists.txt') do set LLVM_VERSION=%%i
+        set LLVM_RELEASE_TAG=llvm-master
 )
 
 if "%TARGET_CPU%" == "" goto :amd64
-if "%TOOLCHAIN%" == "" goto :msvc14
+if "%TOOLCHAIN%" == "" goto :clang
 if "%CRT%" == "" goto :libcmt
 if "%CONFIGURATION%" == "" goto :release
-if "%CMAKE_USE_ARCH_OPTIONS%" == "" (set CMAKE_GENERATOR=%CMAKE_GENERATOR%%CMAKE_ARCH_SUFFIX%)
-if not "%CMAKE_USE_ARCH_OPTIONS%" == "" (set CMAKE_OPTIONS=%CMAKE_OPTIONS%%CMAKE_ARCH_OPTIONS%)
+
+:: Skip generator suffix for Ninja/NMake generators (for Clang)
+if "%TOOLCHAIN%" == "clang" (
+    set CMAKE_OPTIONS=%CMAKE_COMPILER_OPTIONS%
+) else (
+    if "%CMAKE_USE_ARCH_OPTIONS%" == "" (set CMAKE_GENERATOR=%CMAKE_GENERATOR%%CMAKE_GENERATOR_SUFFIX%)
+    if not "%CMAKE_USE_ARCH_OPTIONS%" == "" (set CMAKE_OPTIONS=%CMAKE_OPTIONS% %CMAKE_ARCH_OPTIONS%)
+)
 
 set TAR_SUFFIX=.tar.xz
 perl compare-versions.pl %LLVM_VERSION% 3.5.0
@@ -193,32 +208,65 @@ set LLVM_CMAKE_CRT_FLAGS= -DCMAKE_MSVC_RUNTIME_LIBRARY=%CMAKE_CRT%
 
 perl compare-versions.pl %LLVM_VERSION% 17.0.0
 if %errorlevel% == -1 set LLVM_CMAKE_CRT_FLAGS= ^
-	-DLLVM_USE_CRT_DEBUG=%LLVM_CRT%d ^
-	-DLLVM_USE_CRT_RELEASE=%LLVM_CRT% ^
-	-DLLVM_USE_CRT_MINSIZEREL=%LLVM_CRT% ^
-	-DLLVM_USE_CRT_RELWITHDEBINFO=%LLVM_CRT%
+        -DLLVM_USE_CRT_DEBUG=%LLVM_CRT%d ^
+        -DLLVM_USE_CRT_RELEASE=%LLVM_CRT% ^
+        -DLLVM_USE_CRT_MINSIZEREL=%LLVM_CRT% ^
+        -DLLVM_USE_CRT_RELWITHDEBINFO=%LLVM_CRT%
 
-set LLVM_CMAKE_CONFIGURE_FLAGS= ^
-	-G "%CMAKE_GENERATOR%" ^
-	%CMAKE_OPTIONS% ^
-	-Thost=x64 ^
-	-DCMAKE_INSTALL_PREFIX=%LLVM_RELEASE_DIR% ^
-	-DCMAKE_DISABLE_FIND_PACKAGE_LibXml2=TRUE ^
-	-DLLVM_TARGETS_TO_BUILD=%LLVM_TARGETS% ^
-	-DLLVM_ENABLE_TERMINFO=OFF ^
-	-DLLVM_ENABLE_ZLIB=OFF ^
-	-DLLVM_INCLUDE_BENCHMARKS=OFF ^
-	-DLLVM_INCLUDE_DOCS=OFF ^
-	-DLLVM_INCLUDE_EXAMPLES=OFF ^
-	-DLLVM_INCLUDE_GO_TESTS=OFF ^
-	-DLLVM_INCLUDE_RUNTIMES=OFF ^
-	-DLLVM_INCLUDE_TESTS=OFF ^
-	-DLLVM_INCLUDE_UTILS=OFF ^
-	-DLLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN=ON ^
-	-DLLVM_ENABLE_DUMP=ON ^
-	-DLLVM_ENABLE_LIBCXX=ON ^
-	%LLVM_CMAKE_CRT_FLAGS% ^
-	%LLVM_CMAKE_CONFIGURE_EXTRA_FLAGS%
+:: If using Clang, adjust build flags for non-VS generator
+if "%TOOLCHAIN%" == "clang" (
+    set CMAKE_BUILD_FLAGS=--config %CONFIGURATION%
+    set LLVM_CMAKE_CONFIGURE_FLAGS= ^
+        -G "%CMAKE_GENERATOR%" ^
+        %CMAKE_OPTIONS% ^
+        -DCMAKE_INSTALL_PREFIX=%LLVM_RELEASE_DIR% ^
+        -DCMAKE_DISABLE_FIND_PACKAGE_LibXml2=TRUE ^
+        -DLLVM_TARGETS_TO_BUILD=%LLVM_TARGETS% ^
+        -DLLVM_ENABLE_TERMINFO=OFF ^
+        -DLLVM_ENABLE_ZLIB=OFF ^
+        -DLLVM_INCLUDE_BENCHMARKS=OFF ^
+        -DLLVM_INCLUDE_DOCS=OFF ^
+        -DLLVM_INCLUDE_EXAMPLES=OFF ^
+        -DLLVM_INCLUDE_GO_TESTS=OFF ^
+        -DLLVM_INCLUDE_RUNTIMES=OFF ^
+        -DLLVM_INCLUDE_TESTS=OFF ^
+        -DLLVM_INCLUDE_UTILS=OFF ^
+        -DLLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN=ON ^
+        -DLLVM_ENABLE_DUMP=ON ^
+        -DLLVM_ENABLE_LIBCXX=ON ^
+        %LLVM_CMAKE_CRT_FLAGS% ^
+        %LLVM_CMAKE_CONFIGURE_EXTRA_FLAGS%
+) else (
+    set CMAKE_BUILD_FLAGS= ^
+        --config %CONFIGURATION% ^
+        -- ^
+        /nologo ^
+        /verbosity:minimal ^
+        /maxcpucount ^
+        /consoleloggerparameters:Summary
+        
+    set LLVM_CMAKE_CONFIGURE_FLAGS= ^
+        -G "%CMAKE_GENERATOR%" ^
+        %CMAKE_OPTIONS% ^
+        -Thost=x64 ^
+        -DCMAKE_INSTALL_PREFIX=%LLVM_RELEASE_DIR% ^
+        -DCMAKE_DISABLE_FIND_PACKAGE_LibXml2=TRUE ^
+        -DLLVM_TARGETS_TO_BUILD=%LLVM_TARGETS% ^
+        -DLLVM_ENABLE_TERMINFO=OFF ^
+        -DLLVM_ENABLE_ZLIB=OFF ^
+        -DLLVM_INCLUDE_BENCHMARKS=OFF ^
+        -DLLVM_INCLUDE_DOCS=OFF ^
+        -DLLVM_INCLUDE_EXAMPLES=OFF ^
+        -DLLVM_INCLUDE_GO_TESTS=OFF ^
+        -DLLVM_INCLUDE_RUNTIMES=OFF ^
+        -DLLVM_INCLUDE_TESTS=OFF ^
+        -DLLVM_INCLUDE_UTILS=OFF ^
+        -DLLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN=ON ^
+        -DLLVM_ENABLE_DUMP=ON ^
+        -DLLVM_ENABLE_LIBCXX=ON ^
+        %LLVM_CMAKE_CRT_FLAGS% ^
+        %LLVM_CMAKE_CONFIGURE_EXTRA_FLAGS%
+)
 
 :: . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
@@ -230,39 +278,47 @@ set CLANG_RELEASE_FILE=%CLANG_RELEASE_NAME%.7z
 set CLANG_RELEASE_DIR=%WORKING_DIR%\%CLANG_RELEASE_NAME%
 set CLANG_RELEASE_DIR=%CLANG_RELEASE_DIR:\=/%
 
-set CLANG_CMAKE_CONFIGURE_FLAGS= ^
-	-G "%CMAKE_GENERATOR%" ^
-	%CMAKE_OPTIONS% ^
-	-DCMAKE_INSTALL_PREFIX=%CLANG_RELEASE_DIR% ^
-	-DCMAKE_DISABLE_FIND_PACKAGE_LibXml2=TRUE ^
-	-DLLVM_INCLUDE_TESTS=OFF ^
-	-DLLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN=ON ^
-	-DCLANG_INCLUDE_DOCS=OFF ^
-	-DCLANG_INCLUDE_TESTS=OFF ^
-	-DLLVM_DIR=%LLVM_RELEASE_DIR%/lib/cmake/llvm ^
-	%LLVM_CMAKE_CRT_FLAGS% ^
-	%CLANG_CMAKE_CONFIGURE_EXTRA_FLAGS%
+:: If using Clang, adjust build flags for Clang
+if "%TOOLCHAIN%" == "clang" (
+    set CLANG_CMAKE_CONFIGURE_FLAGS= ^
+        -G "%CMAKE_GENERATOR%" ^
+        %CMAKE_OPTIONS% ^
+        -DCMAKE_INSTALL_PREFIX=%CLANG_RELEASE_DIR% ^
+        -DCMAKE_DISABLE_FIND_PACKAGE_LibXml2=TRUE ^
+        -DLLVM_INCLUDE_TESTS=OFF ^
+        -DLLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN=ON ^
+        -DCLANG_INCLUDE_DOCS=OFF ^
+        -DCLANG_INCLUDE_TESTS=OFF ^
+        -DLLVM_DIR=%LLVM_RELEASE_DIR%/lib/cmake/llvm ^
+        %LLVM_CMAKE_CRT_FLAGS% ^
+        %CLANG_CMAKE_CONFIGURE_EXTRA_FLAGS%
+) else (
+    set CLANG_CMAKE_CONFIGURE_FLAGS= ^
+        -G "%CMAKE_GENERATOR%" ^
+        %CMAKE_OPTIONS% ^
+        -DCMAKE_INSTALL_PREFIX=%CLANG_RELEASE_DIR% ^
+        -DCMAKE_DISABLE_FIND_PACKAGE_LibXml2=TRUE ^
+        -DLLVM_INCLUDE_TESTS=OFF ^
+        -DLLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN=ON ^
+        -DCLANG_INCLUDE_DOCS=OFF ^
+        -DCLANG_INCLUDE_TESTS=OFF ^
+        -DLLVM_DIR=%LLVM_RELEASE_DIR%/lib/cmake/llvm ^
+        %LLVM_CMAKE_CRT_FLAGS% ^
+        %CLANG_CMAKE_CONFIGURE_EXTRA_FLAGS%
+)
 
 :: . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 perl compare-versions.pl %LLVM_VERSION% 8.0.0
 if %errorlevel% == -1 set CLANG_CMAKE_CONFIGURE_FLAGS= ^
-	%CLANG_CMAKE_CONFIGURE_FLAGS% ^
-	-DCLANG_PATH_TO_LLVM_BUILD=%LLVM_RELEASE_DIR% ^
-	-DLLVM_MAIN_SRC_DIR=%LLVM_RELEASE_DIR%
+        %CLANG_CMAKE_CONFIGURE_FLAGS% ^
+        -DCLANG_PATH_TO_LLVM_BUILD=%LLVM_RELEASE_DIR% ^
+        -DLLVM_MAIN_SRC_DIR=%LLVM_RELEASE_DIR%
 
 perl compare-versions.pl %LLVM_VERSION% 3.5.0
 if %errorlevel% == -1 set CLANG_CMAKE_CONFIGURE_FLAGS= ^
-	%CLANG_CMAKE_CONFIGURE_FLAGS% ^
-	-DLLVM_CONFIG=%LLVM_RELEASE_DIR%/bin/llvm-config
-
-set CMAKE_BUILD_FLAGS= ^
-	--config %CONFIGURATION% ^
-	-- ^
-	/nologo ^
-	/verbosity:minimal ^
-	/maxcpucount ^
-	/consoleloggerparameters:Summary
+        %CLANG_CMAKE_CONFIGURE_FLAGS% ^
+        -DLLVM_CONFIG=%LLVM_RELEASE_DIR%/bin/llvm-config
 
 if /i "%BUILD_PROJECT%" == "llvm" set DEPLOY_FILE=%LLVM_RELEASE_FILE%
 if /i "%BUILD_PROJECT%" == "clang" set DEPLOY_FILE=%CLANG_RELEASE_FILE%
