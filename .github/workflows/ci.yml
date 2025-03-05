@@ -50,3 +50,4 @@ jobs:
                 GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
             with:
                 files: ${{steps.BUILD.outputs.DEPLOY_FILE}}
+                tag_name: v${{ github.run_number }}
