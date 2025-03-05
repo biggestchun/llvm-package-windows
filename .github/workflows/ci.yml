@@ -61,7 +61,7 @@ jobs:
         ninja install
         
     - name: Upload LLVM build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: llvm-18-build
         path: ${{ github.workspace }}\llvm-install
