@@ -39,6 +39,7 @@ jobs:
           -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi" `
           -DLLVM_ENABLE_DUMP=ON `
           -DLLVM_ENABLE_LIBCXX=ON `
+          -DLLVM_HOST_TRIPLE="x86_64-pc-windows-msvc" `
           -DCMAKE_BUILD_TYPE=Release `
           -DCMAKE_C_COMPILER=clang `
           -DCMAKE_CXX_COMPILER=clang++ `
