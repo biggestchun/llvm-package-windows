@@ -15,7 +15,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        choco install -y cmake ninja llvm z3  # Added z3 installation
+        choco install -y cmake ninja llvm z3   
 
     - name: Download LLVM 18 source
       run: |
@@ -34,8 +34,6 @@ jobs:
         # Added Z3_DIR and Z3 variables
         cmake -G Ninja ..\llvm-project\llvm `
           -DLLVM_ENABLE_Z3_SOLVER=ON `
-          -DZ3_INCLUDE_DIR="C:/Program Files/Z3/include" `
-          -DZ3_LIBRARY="C:/Program Files/Z3/bin/libz3.dll" `
           -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;compiler-rt;lld" `
           -DLLVM_FORCE_BUILD_RUNTIME=ON `
           -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi" `
