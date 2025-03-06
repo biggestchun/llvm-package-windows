@@ -15,7 +15,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        choco install -y cmake ninja llvm z3   
+        choco install -y cmake ninja   
 
     - name: Download LLVM 18 source
       run: |
