@@ -31,8 +31,6 @@ jobs:
       run: |
         mkdir llvm-build
         cd llvm-build
-        # Added Z3_DIR and Z3 variables
-        cmake -G Ninja ..\llvm-project\llvm `
         cmake -G Ninja ..\llvm-project\llvm `
         -DLLVM_ENABLE_Z3_SOLVER=OFF `
         -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" `
