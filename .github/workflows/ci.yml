@@ -1,10 +1,12 @@
 name: Build LLVM 18
+
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
 jobs:
   build-llvm:
     runs-on: windows-latest
@@ -12,7 +14,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        choco install -y cmake ninja llvm z3
+        choco install -y cmake ninja llvm
     
     # Cache LLVM source code
     - name: Cache LLVM source
@@ -20,7 +22,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: llvm-project
-        key: ${{ runner.os }}-llvm-18-source-${{ github.sha }}
+        key: ${{ runner.os }}-llvm-18-source
         restore-keys: |
           ${{ runner.os }}-llvm-18-source-
 
@@ -28,6 +30,9 @@ jobs:
     - name: Download LLVM 18 source
       if: steps.cache-llvm-source.outputs.cache-hit != 'true'
       run: |
+        if (Test-Path llvm-project) {
+          Remove-Item llvm-project -Recurse -Force
+        }
         git clone --recurse-submodules --branch release/18.x https://github.com/llvm/llvm-project.git 
         if ($LASTEXITCODE -ne 0) {
           git clone --recurse-submodules --branch llvmorg-18.0.0 https://github.com/llvm/llvm-project.git
@@ -42,7 +47,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: llvm-build
-        key: ${{ runner.os }}-llvm-18-build-${{ hashFiles('**/ci.yml') }}-${{ github.sha }}
+        key: ${{ runner.os }}-llvm-18-build-${{ hashFiles('**/ci.yml') }}
         restore-keys: |
           ${{ runner.os }}-llvm-18-build-${{ hashFiles('**/ci.yml') }}-
           ${{ runner.os }}-llvm-18-build-
@@ -51,7 +56,7 @@ jobs:
     - name: Configure LLVM
       if: steps.cache-build-dir.outputs.cache-hit != 'true'
       run: |
-        mkdir -p llvm-build
+        mkdir llvm-build
         cd llvm-build
         cmake -G Ninja ..\llvm-project\llvm `
           -DLLVM_ENABLE_Z3_SOLVER=OFF `
@@ -80,7 +85,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: llvm-install
-        key: ${{ runner.os }}-llvm-18-install-${{ hashFiles('**/ci.yml') }}-${{ github.sha }}
+        key: ${{ runner.os }}-llvm-18-install-${{ hashFiles('**/ci.yml') }}
         restore-keys: |
           ${{ runner.os }}-llvm-18-install-${{ hashFiles('**/ci.yml') }}-
           ${{ runner.os }}-llvm-18-install-
@@ -107,7 +112,7 @@ jobs:
     - name: Install LLVM
       if: steps.cache-llvm-install.outputs.cache-hit != 'true' || steps.check-install.outputs.install_complete != 'true'
       run: |
-        mkdir -p "${{ github.workspace }}\llvm-install"
+        mkdir llvm-install
         cd llvm-build
         ninja install
 
