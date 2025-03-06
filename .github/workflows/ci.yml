@@ -12,7 +12,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        choco install -y cmake ninja llvm z3
+        choco install -y cmake ninja llvm
     
     # Cache LLVM source code
     - name: Cache LLVM source
