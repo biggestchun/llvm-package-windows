@@ -41,7 +41,7 @@ jobs:
           -DLLVM_ENABLE_LIBCXX=ON `
           -DLLVM_HOST_TRIPLE="x86_64-pc-windows-msvc" `
           -DCMAKE_EXE_LINKER_FLAGS="-lws2_32 -lole32" `
-          -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32 -lole32"
+          -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32 -lole32" `
           -DLLVM_ENABLE_EH=ON `
           -DLLVM_ENABLE_RTTI=ON `
           -DCMAKE_BUILD_TYPE=Release `
