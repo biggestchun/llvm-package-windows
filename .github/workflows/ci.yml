@@ -26,38 +26,42 @@ jobs:
         if ($LASTEXITCODE -ne 0) {
           git clone --recurse-submodules https://github.com/llvm/llvm-project.git
         }
-#          -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" `
+
     - name: Configure LLVM
       run: |
         mkdir llvm-build
         cd llvm-build
         # Added Z3_DIR and Z3 variables
         cmake -G Ninja ..\llvm-project\llvm `
-          -DLLVM_ENABLE_Z3_SOLVER=OFF `
-          -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" `
-          -DLLVM_FORCE_BUILD_RUNTIME=ON `
-          -DCLANG_ENABLE_STATIC_ANALYZER=ON `
-          -DCLANG_BUILD_TOOLS=ON `
-          -DLLVM_ENABLE_DUMP=ON `
-          -DLLVM_ENABLE_LIBCXX=ON `
-          -DLLVM_HOST_TRIPLE="x86_64-pc-windows-msvc" `
-          -DCMAKE_EXE_LINKER_FLAGS="-lws2_32 -lole32" `
-          -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32 -lole32" `
-          -DLIBUNWIND_ENABLE_SHARED=OFF `
-          -DCXX_SUPPORTS_FNO_EXCEPTIONS_FLAG=ON `
-          -DCXX_SUPPORTS_FUNWIND_TABLES_FLAG=ON `
-          -DLLVM_ENABLE_EH=ON `
-          -DLLVM_ENABLE_RTTI=ON `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_C_COMPILER=clang `
-          -DCMAKE_CXX_COMPILER=clang++ `
-          -DLLVM_TARGETS_TO_BUILD="X86" `
-          -DLLVM_OPTIMIZED_TABLEGEN=ON `
-          -DLLVM_USE_LINKER=lld `
-          -DLLVM_INCLUDE_TESTS=OFF `
-          -DLLVM_INCLUDE_EXAMPLES=OFF `
-          -DLLVM_INCLUDE_BENCHMARKS=OFF `
-          -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}\llvm-install"
+        cmake -G Ninja ..\llvm-project\llvm `
+        -DLLVM_ENABLE_Z3_SOLVER=OFF `
+        -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" `
+        -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" `
+        -DLLVM_FORCE_BUILD_RUNTIME=ON `
+        -DCLANG_BUILD_TOOLS=ON `
+        -DLLVM_ENABLE_DUMP=ON `
+        -DLLVM_ENABLE_LIBCXX=ON `
+        -DLLVM_HOST_TRIPLE="x86_64-pc-windows-msvc" `
+        -DCMAKE_SYSTEM_NAME=Windows `
+        -DCMAKE_EXE_LINKER_FLAGS="-lws2_32 -lole32" `
+        -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32 -lole32" `
+        -DLIBUNWIND_ENABLE_SHARED=OFF `
+        -DCXX_SUPPORTS_FNO_EXCEPTIONS_FLAG=ON `
+        -DCXX_SUPPORTS_FUNWIND_TABLES_FLAG=ON `
+        -DLLVM_ENABLE_EH=ON `
+        -DLLVM_ENABLE_RTTI=ON `
+        -DCMAKE_BUILD_TYPE=Release `
+        -DCMAKE_C_COMPILER=clang-cl `
+        -DCMAKE_CXX_COMPILER=clang-cl `
+        -DCMAKE_LINKER=lld-link `
+        -DCMAKE_C_FLAGS="-m64" `
+        -DCMAKE_CXX_FLAGS="-m64" `
+        -DLLVM_TARGETS_TO_BUILD="X86" `
+        -DLLVM_OPTIMIZED_TABLEGEN=ON `
+        -DLLVM_INCLUDE_TESTS=OFF `
+        -DLLVM_INCLUDE_EXAMPLES=OFF `
+        -DLLVM_INCLUDE_BENCHMARKS=OFF `
+        -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}\llvm-install"
 
     - name: Build LLVM
       run: |
