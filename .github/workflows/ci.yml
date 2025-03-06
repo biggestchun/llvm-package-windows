@@ -36,12 +36,15 @@ jobs:
           -DLLVM_ENABLE_Z3_SOLVER=OFF `
           -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" `
           -DLLVM_FORCE_BUILD_RUNTIME=ON `
-          -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi" `
+          -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" `
           -DLLVM_ENABLE_DUMP=ON `
           -DLLVM_ENABLE_LIBCXX=ON `
           -DLLVM_HOST_TRIPLE="x86_64-pc-windows-msvc" `
           -DCMAKE_EXE_LINKER_FLAGS="-lws2_32 -lole32" `
           -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32 -lole32" `
+          -DLIBUNWIND_ENABLE_SHARED=OFF `
+          -DCXX_SUPPORTS_FNO_EXCEPTIONS_FLAG=ON `
+          -DCXX_SUPPORTS_FUNWIND_TABLES_FLAG=ON `
           -DLLVM_ENABLE_EH=ON `
           -DLLVM_ENABLE_RTTI=ON `
           -DCMAKE_BUILD_TYPE=Release `
