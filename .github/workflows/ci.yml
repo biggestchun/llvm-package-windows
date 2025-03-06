@@ -85,33 +85,78 @@ jobs:
           ${{ runner.os }}-llvm-18-install-${{ hashFiles('**/ci.yml') }}-
           ${{ runner.os }}-llvm-18-install-
 
-    # Build LLVM (always run this to ensure completion)
+    # Check if we need to build/install
+    - name: Check if install is needed
+      id: check-install
+      if: steps.cache-llvm-install.outputs.cache-hit == 'true'
+      run: |
+        if (Test-Path -Path "${{ github.workspace }}\llvm-install\bin\clang.exe") {
+          echo "::set-output name=install_complete::true"
+        } else {
+          echo "::set-output name=install_complete::false"
+        }
+
+    # Build LLVM if needed
     - name: Build LLVM
+      if: steps.cache-llvm-install.outputs.cache-hit != 'true' || steps.check-install.outputs.install_complete != 'true'
       run: |
         cd llvm-build
         ninja
 
-    # Install LLVM (always run this to ensure completion)
+    # Install LLVM if needed
     - name: Install LLVM
+      if: steps.cache-llvm-install.outputs.cache-hit != 'true' || steps.check-install.outputs.install_complete != 'true'
       run: |
+        mkdir -p "${{ github.workspace }}\llvm-install"
         cd llvm-build
         ninja install
 
-    # Upload artifacts
+    # Create artifact archive
+    - name: Create LLVM archive
+      run: |
+        cd ${{ github.workspace }}
+        7z a -tzip llvm-18-windows.zip .\llvm-install\*
+
+    # Upload artifacts for job access
     - name: Upload LLVM build
       uses: actions/upload-artifact@v4
       with:
         name: llvm-18-build
         path: ${{ github.workspace }}\llvm-install
+        
+    # Get version information for release
+    - name: Get LLVM version
+      id: get-version
+      run: |
+        $version = & "${{ github.workspace }}\llvm-install\bin\clang.exe" --version | Select-String -Pattern "version (\d+\.\d+\.\d+)" | ForEach-Object { $_.Matches.Groups[1].Value }
+        if (-not $version) { $version = "18.0.0" }
+        $buildDate = Get-Date -Format "yyyyMMdd"
+        echo "::set-output name=llvm_version::$version"
+        echo "::set-output name=build_date::$buildDate"
+      shell: pwsh
 
-    - name: release
-      uses: actions/create-release@v1
+    # Create release
+    - name: Create Release
       id: create_release
+      uses: softprops/action-gh-release@v1
+      if: github.event_name != 'pull_request'
       with:
+        name: LLVM ${{ steps.get-version.outputs.llvm_version }} (Build ${{ steps.get-version.outputs.build_date }})
+        tag_name: llvm-${{ steps.get-version.outputs.llvm_version }}-${{ steps.get-version.outputs.build_date }}
+        files: ${{ github.workspace }}\llvm-18-windows.zip
         draft: false
         prerelease: false
-        release_name: ${{ steps.version.outputs.version }}
-        tag_name: ${{ github.ref }}
-        body_path: CHANGELOG.md
+        body: |
+          LLVM ${{ steps.get-version.outputs.llvm_version }} Windows Build
+          
+          Build date: ${{ steps.get-version.outputs.build_date }}
+          
+          This release contains:
+          - LLVM ${{ steps.get-version.outputs.llvm_version }}
+          - Clang
+          - Clang Extra Tools
+          - LLD (LLVM Linker)
+          
+          Built with optimizations for Windows x86_64.
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
