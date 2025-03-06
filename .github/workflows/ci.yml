@@ -26,7 +26,7 @@ jobs:
 
     # Download source if not cached
     - name: Download LLVM 18 source
-      if: steps.cache-llvm-source.outputs.cache-hit != 'true'
+      if: 'false'
       run: |
         git clone --recurse-submodules --branch release/18.x https://github.com/llvm/llvm-project.git 
         if ($LASTEXITCODE -ne 0) {
