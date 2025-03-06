@@ -1,23 +1,32 @@
 name: Build LLVM 18
-
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
 jobs:
   build-llvm:
     runs-on: windows-latest
     timeout-minutes: 360
-
     steps:
     - name: Install dependencies
       run: |
-        choco install -y cmake ninja llvm z3   
+        choco install -y cmake ninja llvm z3
+    
+    # Cache LLVM source code
+    - name: Cache LLVM source
+      id: cache-llvm-source
+      uses: actions/cache@v3
+      with:
+        path: llvm-project
+        key: ${{ runner.os }}-llvm-18-source-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-llvm-18-source-
 
+    # Download source if not cached
     - name: Download LLVM 18 source
+      if: steps.cache-llvm-source.outputs.cache-hit != 'true'
       run: |
         git clone --recurse-submodules --branch release/18.x https://github.com/llvm/llvm-project.git 
         if ($LASTEXITCODE -ne 0) {
@@ -26,24 +35,32 @@ jobs:
         if ($LASTEXITCODE -ne 0) {
           git clone --recurse-submodules https://github.com/llvm/llvm-project.git
         }
+    
+    # Cache CMake build files
+    - name: Cache build directory
+      id: cache-build-dir
+      uses: actions/cache@v3
+      with:
+        path: llvm-build
+        key: ${{ runner.os }}-llvm-18-build-${{ hashFiles('**/ci.yml') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-llvm-18-build-${{ hashFiles('**/ci.yml') }}-
+          ${{ runner.os }}-llvm-18-build-
 
+    # Configure LLVM if we need to do a fresh build
     - name: Configure LLVM
+      if: steps.cache-build-dir.outputs.cache-hit != 'true'
       run: |
-        mkdir llvm-build
+        mkdir -p llvm-build
         cd llvm-build
-        # Added Z3_DIR and Z3 variables
         cmake -G Ninja ..\llvm-project\llvm `
           -DLLVM_ENABLE_Z3_SOLVER=OFF `
           -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" `
-          -DLLVM_FORCE_BUILD_RUNTIME=ON `
-          -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" `
+          -DLLVM_ENABLE_RUNTIMES="" `
           -DLLVM_ENABLE_DUMP=ON `
           -DLLVM_HOST_TRIPLE="x86_64-pc-windows-msvc" `
           -DCMAKE_EXE_LINKER_FLAGS="-lws2_32 -lole32" `
           -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32 -lole32" `
-          -DLIBUNWIND_ENABLE_SHARED=OFF `
-          -DCXX_SUPPORTS_FNO_EXCEPTIONS_FLAG=ON `
-          -DCXX_SUPPORTS_FUNWIND_TABLES_FLAG=ON `
           -DLLVM_ENABLE_EH=ON `
           -DLLVM_ENABLE_RTTI=ON `
           -DCMAKE_BUILD_TYPE=Release `
@@ -56,17 +73,31 @@ jobs:
           -DLLVM_INCLUDE_EXAMPLES=OFF `
           -DLLVM_INCLUDE_BENCHMARKS=OFF `
           -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}\llvm-install"
+    
+    # Cache installed artifacts
+    - name: Cache installed artifacts
+      id: cache-llvm-install
+      uses: actions/cache@v3
+      with:
+        path: llvm-install
+        key: ${{ runner.os }}-llvm-18-install-${{ hashFiles('**/ci.yml') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-llvm-18-install-${{ hashFiles('**/ci.yml') }}-
+          ${{ runner.os }}-llvm-18-install-
 
+    # Build LLVM (always run this to ensure completion)
     - name: Build LLVM
       run: |
         cd llvm-build
         ninja
 
+    # Install LLVM (always run this to ensure completion)
     - name: Install LLVM
       run: |
         cd llvm-build
         ninja install
 
+    # Upload artifacts
     - name: Upload LLVM build
       uses: actions/upload-artifact@v4
       with:
