@@ -69,7 +69,6 @@ jobs:
         
     - name: Configure LLVM tools
       run: |
-        mkdir llvm-build
         cd llvm-build
         cmake -G Ninja ..\llvm-project\llvm `
         -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" `
