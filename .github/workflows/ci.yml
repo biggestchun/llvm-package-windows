@@ -27,46 +27,6 @@ jobs:
           git clone --recurse-submodules https://github.com/llvm/llvm-project.git
         }
 
-    - name: Configure LLVM
-      run: |
-        mkdir llvm-build
-        cd llvm-build
-        cmake -G Ninja ..\llvm-project\llvm `
-          -DLLVM_ENABLE_Z3_SOLVER=OFF `
-          -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" `
-          -DLLVM_FORCE_BUILD_RUNTIME=ON `
-          -DCLANG_BUILD_TOOLS=ON `
-          -DLLVM_ENABLE_DUMP=ON `
-          -DLLVM_ENABLE_LIBCXX=ON `
-          -DLLVM_HOST_TRIPLE="x86_64-pc-windows-msvc" `
-          -DCMAKE_EXE_LINKER_FLAGS="-lws2_32 -lole32" `
-          -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32 -lole32" `
-          -DLIBUNWIND_ENABLE_SHARED=OFF `
-          -DCXX_SUPPORTS_FNO_EXCEPTIONS_FLAG=ON `
-          -DCXX_SUPPORTS_FUNWIND_TABLES_FLAG=ON `
-          -DLLVM_ENABLE_EH=ON `
-          -DLLVM_ENABLE_RTTI=ON `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_C_COMPILER=clang `
-          -DCMAKE_CXX_COMPILER=clang++ `
-          -DLLVM_TARGETS_TO_BUILD="X86" `
-          -DLLVM_OPTIMIZED_TABLEGEN=ON `
-          -DLLVM_USE_LINKER=lld `
-          -DLLVM_INCLUDE_TESTS=OFF `
-          -DLLVM_INCLUDE_EXAMPLES=OFF `
-          -DLLVM_INCLUDE_BENCHMARKS=OFF `
-          -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}\llvm-install"
-
-    - name: Build LLVM
-      run: |
-        cd llvm-build
-        ninja
-        
-    - name: Install LLVM
-      run: |
-        cd llvm-build
-        ninja install
-        
     - name: Configure LLVM tools
       run: |
         cd llvm-build
@@ -108,8 +68,63 @@ jobs:
         cd llvm-build
         ninja install
 
+
+    - name: Configure LLVM
+      run: |
+        mkdir llvm-build
+        cd llvm-build
+        cmake -G Ninja ..\llvm-project\llvm `
+          -DLLVM_ENABLE_Z3_SOLVER=OFF `
+          -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" `
+          -DLLVM_FORCE_BUILD_RUNTIME=ON `
+          -DCLANG_BUILD_TOOLS=ON `
+          -DLLVM_ENABLE_DUMP=ON `
+          -DLLVM_ENABLE_LIBCXX=ON `
+          -DLLVM_HOST_TRIPLE="x86_64-pc-windows-msvc" `
+          -DCMAKE_EXE_LINKER_FLAGS="-lws2_32 -lole32" `
+          -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32 -lole32" `
+          -DLIBUNWIND_ENABLE_SHARED=OFF `
+          -DCXX_SUPPORTS_FNO_EXCEPTIONS_FLAG=ON `
+          -DCXX_SUPPORTS_FUNWIND_TABLES_FLAG=ON `
+          -DLLVM_ENABLE_EH=ON `
+          -DLLVM_ENABLE_RTTI=ON `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_C_COMPILER=clang `
+          -DCMAKE_CXX_COMPILER=clang++ `
+          -DLLVM_TARGETS_TO_BUILD="X86" `
+          -DLLVM_OPTIMIZED_TABLEGEN=ON `
+          -DLLVM_USE_LINKER=lld `
+          -DLLVM_INCLUDE_TESTS=OFF `
+          -DLLVM_INCLUDE_EXAMPLES=OFF `
+          -DLLVM_INCLUDE_BENCHMARKS=OFF `
+          -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}\llvm-install"
+
+    - name: Build LLVM
+      run: |
+        cd llvm-build
+        ninja
+        
+    - name: Install LLVM
+      run: |
+        cd llvm-build
+        ninja install
+        
+   
     - name: Upload LLVM build
       uses: actions/upload-artifact@v4
       with:
         name: llvm-18-build
         path: ${{ github.workspace }}\llvm-install
+
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ github.workspace }}\llvm-install\**
+        name: LLVM Build ${{ github.run_number }}
+        tag_name: build-${{ github.run_number }}  # Auto-generates a tag
+        generate_release_notes: true
+        draft: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
