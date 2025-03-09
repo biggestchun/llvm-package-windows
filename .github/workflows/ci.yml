@@ -26,7 +26,12 @@ jobs:
         if ($LASTEXITCODE -ne 0) {
           git clone --recurse-submodules https://github.com/llvm/llvm-project.git
         }
-
+        
+    - name: Setup Visual Studio tools
+      uses: microsoft/setup-msbuild@v1.0.2
+    - name: Add VS Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      
     - name: Configure LLVM tools
       run: |
         cd llvm-build
@@ -38,6 +43,8 @@ jobs:
         -DLIBCXXABI_ENABLE_SHARED=OFF `
         -DLIBCXXABI_ENABLE_STATIC=ON `
         -DLIBUNWIND_ENABLE_SHARED=OFF `
+        -DLLVM_ENABLE_BLAKE3_ASSEMBLY_OPTIMIZATIONS=OFF `
+        -DLLVM_INTEGRATED_AS=ON `
         -DLIBUNWIND_ENABLE_STATIC=ON `
         -DCMAKE_EXE_LINKER_FLAGS="-lws2_32 -lole32" `
         -DCMAKE_SHARED_LINKER_FLAGS="-lws2_32 -lole32" `
