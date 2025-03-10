@@ -37,10 +37,10 @@ jobs:
         mkdir llvm-build
         cd llvm-build
         cmake -G Ninja ..\llvm-project\llvm `
-        -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" `
-        -DLLVM_ENABLE_PROJECTS="" `
+        -DLLVM_ENABLE_RUNTIMES="libcxx" `
         -DLLVM_HOST_TRIPLE="x86_64-pc-windows-msvc" `
         -DCMAKE_BUILD_TYPE=Release `
+        -DLIBCXX_ENABLE_EXPERIMENTAL_LIBRARY=NO `
         -DCMAKE_C_COMPILER=clang-cl `
         -DCMAKE_CXX_COMPILER=clang-cl `
         -DLLVM_INCLUDE_TESTS=OFF `
