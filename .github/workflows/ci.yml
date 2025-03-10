@@ -27,23 +27,6 @@ jobs:
           git clone --recurse-submodules https://github.com/llvm/llvm-project.git
         }
 
-    - name: Patch libunwind CMakeLists.txt
-      run: |
-        $cmakeFile = "llvm-project\libunwind\CMakeLists.txt"
-        $cmakeContent = Get-Content -Path $cmakeFile -Raw
-        
-        # Add Windows-specific include and flags
-        if ($cmakeContent -match "if\s*\(\s*WIN32\s*\)") {
-          # Already has WIN32 section, append to it
-          $cmakeContent = $cmakeContent -replace "(if\s*\(\s*WIN32\s*\)[^\}]*)", "`$1`n  include_directories(SYSTEM `${CMAKE_CURRENT_SOURCE_DIR}/include)`n  add_definitions(-D_LIBUNWIND_USE_MALLOC)`n"
-        } else {
-          # Add new WIN32 section
-          $cmakeContent += "`nif(WIN32)`n  include_directories(SYSTEM `${CMAKE_CURRENT_SOURCE_DIR}/include)`n  add_definitions(-D_LIBUNWIND_USE_MALLOC)`nendif()`n"
-        }
-        
-        Set-Content -Path $cmakeFile -Value $cmakeContent
-
-        
     - name: Setup Visual Studio tools
       uses: microsoft/setup-msbuild@v1.0.2
     - name: Add VS Developer Command Prompt
