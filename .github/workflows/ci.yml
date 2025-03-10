@@ -55,7 +55,7 @@ jobs:
         -DLLVM_ENABLE_RTTI=ON `
         -DLLVM_HOST_TRIPLE="x86_64-pc-windows-msvc" `
         -DCMAKE_SYSTEM_NAME=Windows `
-        -DCMAKE_CXX_FLAGS="/D_LIBUNWIND_USE_MALLOC" `
+        -DCMAKE_CXX_FLAGS="/D_LIBUNWIND_USE_MALLOC /FIWindows.h /FImalloc.h" `
         -DCMAKE_BUILD_TYPE=Release `
         -DCMAKE_C_COMPILER=clang-cl `
         -DCMAKE_CXX_COMPILER=clang-cl `
